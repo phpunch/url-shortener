@@ -11,7 +11,7 @@ import (
 	"url-shortener/repository"
 )
 
-const memberKey = "shortenUrlMembers"
+const shortenUrlPrefix = "shortenUrl:"
 
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
@@ -58,26 +58,22 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 		object.Expiry = *expiry
 	}
 
-	_, err := s.repository.Set(ctx, object)
+	_, err := s.repository.Set(ctx, shortenUrlPrefix, shortUrl, object)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
-	}
-	_, err = s.repository.SAdd(ctx, memberKey, shortUrl)
-	if err != nil {
-		return "", fmt.Errorf("failed to add member, err: %v", err)
 	}
 	return shortUrl, nil
 }
 
 func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
-	object, err := s.repository.Get(ctx, shortCode)
+	object, err := s.repository.Get(ctx, shortenUrlPrefix, shortCode)
 	if err != nil {
 		return "", fmt.Errorf("failed to get url, err: %v", err)
 	}
 
 	object.Hits += 1
 
-	_, err = s.repository.Set(ctx, object)
+	_, err = s.repository.Set(ctx, shortenUrlPrefix, shortCode, object)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -85,7 +81,7 @@ func (s *service) Decode(ctx context.Context, shortCode string) (string, error) 
 }
 
 func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl *string) ([]*model.UrlObject, error) {
-	shortCodes, err := s.repository.SMembers(ctx, memberKey)
+	shortCodeKeys, err := s.repository.Keys(ctx, shortenUrlPrefix+"*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get members, err: %v", err)
 	}
@@ -93,8 +89,8 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 	// TODO: filter
 
 	var urlObjects []*model.UrlObject
-	for _, shortCode := range shortCodes {
-		urlObject, err := s.repository.Get(ctx, shortCode)
+	for _, shortCodeKey := range shortCodeKeys {
+		urlObject, err := s.repository.Get(ctx, shortenUrlPrefix, shortCodeKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get url, err: %v", err)
 		}
@@ -103,3 +99,6 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 
 	return urlObjects, nil
 }
+
+// func (s *service) DeleteUrl(ctx context.Context, url string) (bool, error) {
+// }
