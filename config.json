@@ -1,0 +1,4 @@
+{
+  "REDIS_ADDRESS": "redis:6379",
+  "PORT": 9092
+}
