@@ -52,9 +52,16 @@ func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o 
 		return "", fmt.Errorf("failed to marshal json, err: %v", err)
 	}
 
+	// set url object
 	_, err = conn.Do("SET", prefix+o.ShortCode, jsonBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to set data: %v", err)
+	}
+
+	// set expiry
+	_, err = conn.Do("EXPIREAT", prefix+o.ShortCode, o.Expiry.Unix())
+	if err != nil {
+		return "", fmt.Errorf("failed to set expire at: %v", err)
 	}
 
 	return "", nil
