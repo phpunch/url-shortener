@@ -12,6 +12,7 @@ import (
 type Repository interface {
 	Set(context.Context, *model.UrlObject) (string, error)
 	Get(context.Context, string) (string, error)
+	Exists(context.Context, string) (bool, error)
 }
 
 // redisRepository is a storange management
@@ -57,6 +58,19 @@ func (r *redisRepository) Get(ctx context.Context, key string) (string, error) {
 	value, err := redis.String(conn.Do("SET", key))
 	if err != nil {
 		return "", fmt.Errorf("failed to get data: %v", err)
+	}
+
+	return value, nil
+}
+func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) {
+	conn, err := r.Pool.GetContext(ctx)
+	if err != nil {
+		return false, fmt.Errorf("context expired. err: %v", err)
+	}
+
+	value, err := redis.Bool(conn.Do("EXISTS", key))
+	if err != nil {
+		return false, fmt.Errorf("failed to get data: %v", err)
 	}
 
 	return value, nil
