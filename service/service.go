@@ -13,9 +13,9 @@ import (
 
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
-	// Decode(shortCode string) (string, error)
-	// GetUrlObjects(shortCode *string, fullUrl *string) ([]*model.UrlObject, error)
-	// DeleteUrl(url string) (bool, error)
+	Decode(ctx context.Context, shortCode string) (string, error)
+	GetUrlObjects(ctx context.Context, shortCode *string, fullUrl *string) ([]*model.UrlObject, error)
+	DeleteUrl(ctx context.Context, url string) (bool, error)
 }
 
 type service struct {
@@ -61,4 +61,20 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
 	return shortUrl, nil
+}
+
+func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
+	urlObject, err := s.repository.Get(ctx, shortCode)
+	if err != nil {
+		return "", fmt.Errorf("failed to get url, err: %v", err)
+	}
+	return urlObject.FullURL, nil
+}
+
+func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl *string) ([]*model.UrlObject, error) {
+	urlObject, err := s.repository.Get(ctx, shortCode)
+	if err != nil {
+		return "", fmt.Errorf("failed to get url, err: %v", err)
+	}
+	return fullUrl, nil
 }
