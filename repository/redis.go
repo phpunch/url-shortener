@@ -11,9 +11,9 @@ import (
 
 // Repository is an interface for key-value database
 type Repository interface {
-	Set(context.Context, string, string, *model.UrlObject) (string, error)
-	Get(context.Context, string, string) (*model.UrlObject, error)
-	Del(context.Context, string, string) (bool, error)
+	Set(context.Context, string, *model.UrlObject) (string, error)
+	Get(context.Context, string) (*model.UrlObject, error)
+	Del(context.Context, string) (bool, error)
 	Exists(context.Context, string) (bool, error)
 	// SAdd(context.Context, string, string) (bool, error)
 	// SMembers(context.Context, string) ([]string, error)
@@ -41,7 +41,7 @@ func NewPool(address string) (Repository, error) {
 	return &redisRepository{Pool: pool}, nil
 }
 
-func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o *model.UrlObject) (string, error) {
+func (r *redisRepository) Set(ctx context.Context, key string, o *model.UrlObject) (string, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return "", fmt.Errorf("context expired. err: %v", err)
@@ -54,7 +54,7 @@ func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o 
 	}
 
 	// set url object
-	_, err = conn.Do("SET", prefix+key, jsonBytes)
+	_, err = conn.Do("SET", key, jsonBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to set data: %v", err)
 	}
@@ -62,7 +62,7 @@ func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o 
 	// set expiry only specified
 	var defaultTime time.Time
 	if o.Expiry.Unix() != defaultTime.Unix() {
-		_, err = conn.Do("EXPIREAT", prefix+key, o.Expiry.Unix())
+		_, err = conn.Do("EXPIREAT", key, o.Expiry.Unix())
 		if err != nil {
 			return "", fmt.Errorf("failed to set expire at: %v", err)
 		}
@@ -70,14 +70,14 @@ func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o 
 
 	return "", nil
 }
-func (r *redisRepository) Get(ctx context.Context, prefix string, key string) (*model.UrlObject, error) {
+func (r *redisRepository) Get(ctx context.Context, key string) (*model.UrlObject, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
 	defer conn.Close()
 
-	jsonBytes, err := redis.Bytes(conn.Do("GET", prefix+key))
+	jsonBytes, err := redis.Bytes(conn.Do("GET", key))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data: %v", err)
 	}
@@ -89,14 +89,14 @@ func (r *redisRepository) Get(ctx context.Context, prefix string, key string) (*
 
 	return &o, nil
 }
-func (r *redisRepository) Del(ctx context.Context, prefix string, key string) (bool, error) {
+func (r *redisRepository) Del(ctx context.Context, key string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return false, fmt.Errorf("context expired. err: %v", err)
 	}
 	defer conn.Close()
 
-	deleteKeys, err := redis.Int(conn.Do("DEL", prefix+key))
+	deleteKeys, err := redis.Int(conn.Do("DEL", key))
 	if deleteKeys != 1 {
 		return false, fmt.Errorf("failed to delete key. err: key not found")
 	}

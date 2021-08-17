@@ -59,7 +59,7 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 		object.Expiry = *expiry
 	}
 
-	_, err := s.repository.Set(ctx, shortenUrlPrefix, shortCode, object)
+	_, err := s.repository.Set(ctx, shortenUrlPrefix+shortCode, object)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -67,14 +67,14 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 }
 
 func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
-	object, err := s.repository.Get(ctx, shortenUrlPrefix, shortCode)
+	object, err := s.repository.Get(ctx, shortenUrlPrefix+shortCode)
 	if err != nil {
 		return "", fmt.Errorf("failed to get url, err: %v", err)
 	}
 
 	object.Hits += 1
 
-	_, err = s.repository.Set(ctx, shortenUrlPrefix, shortCode, object)
+	_, err = s.repository.Set(ctx, shortenUrlPrefix+shortCode, object)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -91,7 +91,7 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 
 	var urlObjects []*model.UrlObject
 	for _, shortCodeKey := range shortCodeKeys {
-		urlObject, err := s.repository.Get(ctx, shortenUrlPrefix, shortCodeKey)
+		urlObject, err := s.repository.Get(ctx, shortCodeKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get url, err: %v", err)
 		}
@@ -102,7 +102,7 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 }
 
 func (s *service) DeleteUrl(ctx context.Context, url string) (bool, error) {
-	isDeleted, err := s.repository.Del(ctx, shortenUrlPrefix, url)
+	isDeleted, err := s.repository.Del(ctx, shortenUrlPrefix+url)
 	if err != nil || !isDeleted {
 		return false, fmt.Errorf("failed to delete url, err: %v", err)
 	}
