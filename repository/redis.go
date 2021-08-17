@@ -46,6 +46,7 @@ func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o 
 	if err != nil {
 		return "", fmt.Errorf("context expired. err: %v", err)
 	}
+	defer conn.Close()
 
 	jsonBytes, err := json.Marshal(o)
 	if err != nil {
@@ -53,15 +54,18 @@ func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o 
 	}
 
 	// set url object
-	_, err = conn.Do("SET", prefix+o.ShortCode, jsonBytes)
+	_, err = conn.Do("SET", prefix+key, jsonBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to set data: %v", err)
 	}
 
-	// set expiry
-	_, err = conn.Do("EXPIREAT", prefix+o.ShortCode, o.Expiry.Unix())
-	if err != nil {
-		return "", fmt.Errorf("failed to set expire at: %v", err)
+	// set expiry only specified
+	var defaultTime time.Time
+	if o.Expiry.Unix() != defaultTime.Unix() {
+		_, err = conn.Do("EXPIREAT", prefix+key, o.Expiry.Unix())
+		if err != nil {
+			return "", fmt.Errorf("failed to set expire at: %v", err)
+		}
 	}
 
 	return "", nil
@@ -71,6 +75,7 @@ func (r *redisRepository) Get(ctx context.Context, prefix string, key string) (*
 	if err != nil {
 		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
+	defer conn.Close()
 
 	jsonBytes, err := redis.Bytes(conn.Do("GET", prefix+key))
 	if err != nil {
@@ -89,6 +94,7 @@ func (r *redisRepository) Del(ctx context.Context, prefix string, key string) (b
 	if err != nil {
 		return false, fmt.Errorf("context expired. err: %v", err)
 	}
+	defer conn.Close()
 
 	deleteKeys, err := redis.Int(conn.Do("DEL", prefix+key))
 	if deleteKeys != 1 {
@@ -105,6 +111,7 @@ func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) 
 	if err != nil {
 		return false, fmt.Errorf("context expired. err: %v", err)
 	}
+	defer conn.Close()
 
 	value, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
