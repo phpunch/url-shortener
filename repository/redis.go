@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"time"
@@ -11,7 +12,7 @@ import (
 // Repository is an interface for key-value database
 type Repository interface {
 	Set(context.Context, *model.UrlObject) (string, error)
-	Get(context.Context, string) (string, error)
+	Get(context.Context, string) (*model.UrlObject, error)
 	Exists(context.Context, string) (bool, error)
 }
 
@@ -42,25 +43,35 @@ func (r *redisRepository) Set(ctx context.Context, o *model.UrlObject) (string, 
 		return "", fmt.Errorf("context expired. err: %v", err)
 	}
 
-	_, err = conn.Do("SET", o.ShortCode, o.FullURL)
+	jsonBytes, err := json.Marshal(o)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal json, err: %v", err)
+	}
+
+	_, err = conn.Do("SET", o.ShortCode, jsonBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to set data: %v", err)
 	}
 
 	return "", nil
 }
-func (r *redisRepository) Get(ctx context.Context, key string) (string, error) {
+func (r *redisRepository) Get(ctx context.Context, key string) (*model.UrlObject, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
-		return "", fmt.Errorf("context expired. err: %v", err)
+		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
 
-	value, err := redis.String(conn.Do("SET", key))
+	jsonBytes, err := redis.Bytes(conn.Do("SET", key))
 	if err != nil {
-		return "", fmt.Errorf("failed to get data: %v", err)
+		return nil, fmt.Errorf("failed to get data: %v", err)
 	}
 
-	return value, nil
+	var o model.UrlObject
+	if err = json.Unmarshal(jsonBytes, &o); err != nil {
+		return nil, err
+	}
+
+	return &o, nil
 }
 func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
