@@ -10,6 +10,8 @@ import (
 )
 
 type Controller interface {
+	Shorten(ctx *gin.Context)
+	Redirect(ctx *gin.Context)
 }
 
 type controller struct {
@@ -20,6 +22,12 @@ type Response struct {
 	Code    uint64      `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
+}
+
+func New(service service.Service) Controller {
+	return &controller{
+		service,
+	}
 }
 
 func (c *controller) Shorten(ctx *gin.Context) {
@@ -65,4 +73,19 @@ func (c *controller) Shorten(ctx *gin.Context) {
 		Message: "success",
 		Data:    shortCode,
 	})
+}
+
+func (c *controller) Redirect(ctx *gin.Context) {
+	// Receive input
+	shortCode := ctx.Param("shortCode")
+
+	fullUrl, err := c.service.Decode(ctx, shortCode)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, customError.InternalError{
+			Code:    2,
+			Message: fmt.Sprintf("internal error, err: %v", err),
+		})
+		return
+	}
+	ctx.Redirect(http.StatusMovedPermanently, fullUrl)
 }
