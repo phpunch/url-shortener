@@ -13,6 +13,7 @@ import (
 type Repository interface {
 	Set(context.Context, string, string, *model.UrlObject) (string, error)
 	Get(context.Context, string, string) (*model.UrlObject, error)
+	Del(context.Context, string, string) (bool, error)
 	Exists(context.Context, string) (bool, error)
 	// SAdd(context.Context, string, string) (bool, error)
 	// SMembers(context.Context, string) ([]string, error)
@@ -75,6 +76,22 @@ func (r *redisRepository) Get(ctx context.Context, prefix string, key string) (*
 	}
 
 	return &o, nil
+}
+func (r *redisRepository) Del(ctx context.Context, prefix string, key string) (bool, error) {
+	conn, err := r.Pool.GetContext(ctx)
+	if err != nil {
+		return false, fmt.Errorf("context expired. err: %v", err)
+	}
+
+	deleteKeys, err := redis.Int(conn.Do("DEL", prefix+key))
+	if deleteKeys != 1 {
+		return false, fmt.Errorf("failed to delete key. err: key not found")
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to delete key. err: %v", err)
+	}
+
+	return true, nil
 }
 func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)

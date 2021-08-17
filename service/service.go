@@ -100,5 +100,10 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 	return urlObjects, nil
 }
 
-// func (s *service) DeleteUrl(ctx context.Context, url string) (bool, error) {
-// }
+func (s *service) DeleteUrl(ctx context.Context, url string) (bool, error) {
+	isDeleted, err := s.repository.Del(ctx, shortenUrlPrefix, url)
+	if err != nil || !isDeleted {
+		return false, fmt.Errorf("failed to delete url, err: %v", err)
+	}
+	return isDeleted, err
+}
