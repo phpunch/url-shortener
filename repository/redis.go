@@ -72,7 +72,7 @@ func (r *redisRepository) Get(ctx context.Context, prefix string, key string) (*
 		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
 
-	jsonBytes, err := redis.Bytes(conn.Do("SET", prefix+key))
+	jsonBytes, err := redis.Bytes(conn.Do("GET", prefix+key))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data: %v", err)
 	}
