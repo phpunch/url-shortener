@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"net/url"
 	"time"
 	"url-shortener/customError"
 	"url-shortener/service"
@@ -54,9 +55,18 @@ func (c *controller) Shorten(ctx *gin.Context) {
 		return
 	}
 
+	// Validate url
+	uri, err := url.ParseRequestURI(input.Url)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, customError.ValidationError{
+			Code:    1,
+			Message: fmt.Sprintf("failed to handle url input, err: %v", err),
+		})
+		return
+	}
+
 	// Convert expiry to time type
 	var expiry *time.Time
-	var err error
 	if input.Expiry != "" {
 		(*expiry), err = time.Parse(time.RFC3339, input.Expiry)
 		if err != nil {
@@ -68,7 +78,7 @@ func (c *controller) Shorten(ctx *gin.Context) {
 		}
 	}
 
-	shortCode, err := c.service.Encode(ctx, input.Url, expiry)
+	shortCode, err := c.service.Encode(ctx, uri.String(), expiry)
 	if err != nil {
 		ctx.JSON(http.StatusOK, customError.InternalError{
 			Code:    2,
