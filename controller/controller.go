@@ -8,6 +8,7 @@ import (
 	"time"
 	"url-shortener/customError"
 	"url-shortener/service"
+	"url-shortener/validate"
 )
 
 const adminToken = "@dmIn"
@@ -57,6 +58,16 @@ func (c *controller) Shorten(ctx *gin.Context) {
 
 	// Validate url
 	uri, err := url.ParseRequestURI(input.Url)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, customError.ValidationError{
+			Code:    1,
+			Message: fmt.Sprintf("failed to handle url input, err: %v", err),
+		})
+		return
+	}
+
+	// Check a url whether it is in blacklist
+	err = validate.CheckBlackList(uri.String())
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, customError.ValidationError{
 			Code:    1,
