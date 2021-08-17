@@ -33,5 +33,6 @@ func main() {
 	router := gin.Default()
 	router.POST("/shorten", ctrl.Shorten)
 	router.GET("/:shortCode", ctrl.Redirect)
+	router.GET("/admin/urls", ctrl.GetUrls)
 	router.Run(":8080")
 }
