@@ -11,6 +11,8 @@ import (
 	"url-shortener/repository"
 )
 
+const memberKey = "shortenUrlMembers"
+
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
 	Decode(ctx context.Context, shortCode string) (string, error)
@@ -60,21 +62,44 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
+	_, err = s.repository.SAdd(ctx, memberKey, shortUrl)
+	if err != nil {
+		return "", fmt.Errorf("failed to add member, err: %v", err)
+	}
 	return shortUrl, nil
 }
 
 func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
-	urlObject, err := s.repository.Get(ctx, shortCode)
+	object, err := s.repository.Get(ctx, shortCode)
 	if err != nil {
 		return "", fmt.Errorf("failed to get url, err: %v", err)
 	}
-	return urlObject.FullURL, nil
+
+	object.Hits += 1
+
+	_, err = s.repository.Set(ctx, object)
+	if err != nil {
+		return "", fmt.Errorf("failed to set object, err: %v", err)
+	}
+	return object.FullURL, nil
 }
 
 func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl *string) ([]*model.UrlObject, error) {
-	urlObject, err := s.repository.Get(ctx, shortCode)
+	shortCodes, err := s.repository.SMembers(ctx, memberKey)
 	if err != nil {
-		return "", fmt.Errorf("failed to get url, err: %v", err)
+		return nil, fmt.Errorf("failed to get members, err: %v", err)
 	}
-	return fullUrl, nil
+
+	// TODO: filter
+
+	var urlObjects []*model.UrlObject
+	for _, shortCode := range shortCodes {
+		urlObject, err := s.repository.Get(ctx, shortCode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get url, err: %v", err)
+		}
+		urlObjects = append(urlObjects, urlObject)
+	}
+
+	return urlObjects, nil
 }
