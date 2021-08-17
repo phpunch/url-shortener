@@ -34,5 +34,6 @@ func main() {
 	router.POST("/shorten", ctrl.Shorten)
 	router.GET("/:shortCode", ctrl.Redirect)
 	router.GET("/admin/urls", ctrl.GetUrls)
+	router.DELETE("/:shortCode", ctrl.DeleteUrl)
 	router.Run(":8080")
 }

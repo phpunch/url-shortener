@@ -15,6 +15,7 @@ type Controller interface {
 	Shorten(ctx *gin.Context)
 	Redirect(ctx *gin.Context)
 	GetUrls(ctx *gin.Context)
+	DeleteUrl(ctx *gin.Context)
 }
 
 type controller struct {
@@ -130,5 +131,39 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 		Code:    0,
 		Message: "success",
 		Data:    urlObjects,
+	})
+}
+
+func (c *controller) DeleteUrl(ctx *gin.Context) {
+	// Receive input
+	h := Header{}
+	if err := ctx.ShouldBindHeader(&h); err != nil {
+		ctx.JSON(http.StatusForbidden, customError.InternalError{
+			Code:    2,
+			Message: fmt.Sprintf("failed to access this api"),
+		})
+		return
+	}
+	if h.Token != adminToken {
+		ctx.JSON(http.StatusForbidden, customError.InternalError{
+			Code:    2,
+			Message: fmt.Sprintf("failed to access this api"),
+		})
+		return
+	}
+
+	shortCode := ctx.Param("shortCode")
+
+	_, err := c.service.DeleteUrl(ctx, shortCode)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, customError.InternalError{
+			Code:    2,
+			Message: fmt.Sprintf("internal error, err: %v", err),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, &Response{
+		Code:    0,
+		Message: "success",
 	})
 }
