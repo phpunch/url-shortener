@@ -11,11 +11,12 @@ import (
 
 // Repository is an interface for key-value database
 type Repository interface {
-	Set(context.Context, *model.UrlObject) (string, error)
-	Get(context.Context, string) (*model.UrlObject, error)
+	Set(context.Context, string, string, *model.UrlObject) (string, error)
+	Get(context.Context, string, string) (*model.UrlObject, error)
 	Exists(context.Context, string) (bool, error)
-	SAdd(context.Context, string, string) (bool, error)
-	SMembers(context.Context, string) ([]string, error)
+	// SAdd(context.Context, string, string) (bool, error)
+	// SMembers(context.Context, string) ([]string, error)
+	Keys(context.Context, string) ([]string, error)
 }
 
 // redisRepository is a storange management
@@ -39,7 +40,7 @@ func NewPool(address string) (Repository, error) {
 	return &redisRepository{Pool: pool}, nil
 }
 
-func (r *redisRepository) Set(ctx context.Context, o *model.UrlObject) (string, error) {
+func (r *redisRepository) Set(ctx context.Context, prefix string, key string, o *model.UrlObject) (string, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return "", fmt.Errorf("context expired. err: %v", err)
@@ -50,20 +51,20 @@ func (r *redisRepository) Set(ctx context.Context, o *model.UrlObject) (string, 
 		return "", fmt.Errorf("failed to marshal json, err: %v", err)
 	}
 
-	_, err = conn.Do("SET", o.ShortCode, jsonBytes)
+	_, err = conn.Do("SET", prefix+o.ShortCode, jsonBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to set data: %v", err)
 	}
 
 	return "", nil
 }
-func (r *redisRepository) Get(ctx context.Context, key string) (*model.UrlObject, error) {
+func (r *redisRepository) Get(ctx context.Context, prefix string, key string) (*model.UrlObject, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
 
-	jsonBytes, err := redis.Bytes(conn.Do("SET", key))
+	jsonBytes, err := redis.Bytes(conn.Do("SET", prefix+key))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data: %v", err)
 	}
@@ -89,33 +90,46 @@ func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) 
 	return value, nil
 }
 
-func (r *redisRepository) SAdd(ctx context.Context, setGroup string, member string) (bool, error) {
-	conn, err := r.Pool.GetContext(ctx)
-	if err != nil {
-		return false, fmt.Errorf("context expired. err: %v", err)
-	}
+// func (r *redisRepository) SAdd(ctx context.Context, setGroup string, member string) (bool, error) {
+// 	conn, err := r.Pool.GetContext(ctx)
+// 	if err != nil {
+// 		return false, fmt.Errorf("context expired. err: %v", err)
+// 	}
 
-	num, err := redis.Int(conn.Do("SADD", setGroup, member))
-	if num != 1 {
-		return false, fmt.Errorf("failed to add member, setGroup: %s, member: %s", setGroup, member)
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to add member, err: %v", err)
-	}
+// 	num, err := redis.Int(conn.Do("SADD", setGroup, member))
+// 	if num != 1 {
+// 		return false, fmt.Errorf("failed to add member, setGroup: %s, member: %s", setGroup, member)
+// 	}
+// 	if err != nil {
+// 		return false, fmt.Errorf("failed to add member, err: %v", err)
+// 	}
 
-	return true, nil
-}
+// 	return true, nil
+// }
 
-func (r *redisRepository) SMembers(ctx context.Context, key string) ([]string, error) {
+// func (r *redisRepository) SMembers(ctx context.Context, key string) ([]string, error) {
+// 	conn, err := r.Pool.GetContext(ctx)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("context expired. err: %v", err)
+// 	}
+
+// 	members, err := redis.Strings(conn.Do("SMEMBERS", key))
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get members: %v", err)
+// 	}
+
+// 	return members, nil
+// }
+func (r *redisRepository) Keys(ctx context.Context, pattern string) ([]string, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
 
-	members, err := redis.Strings(conn.Do("SMEMBERS", key))
+	keys, err := redis.Strings(conn.Do("KEYS", pattern))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get members: %v", err)
 	}
 
-	return members, nil
+	return keys, nil
 }
