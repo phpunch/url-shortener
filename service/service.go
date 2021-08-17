@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/catinello/base62"
 	"math/rand"
-	"strconv"
 	"time"
 	"url-shortener/model"
 	"url-shortener/repository"
@@ -34,15 +33,17 @@ func New(repo repository.Repository) Service {
 func (s *service) generateShortUrl(ctx context.Context) string {
 	var id int
 	var err error
+	var key string
 	exist := true
 	for exist {
-		id := rand.Uint64()
-		exist, err = s.repository.Exists(ctx, strconv.FormatUint(id, 10))
+		id = rand.Int()
+		key = base62.Encode(id)
+		exist, err = s.repository.Exists(ctx, key)
 		if err != nil || exist {
 			continue
 		}
 	}
-	return base62.Encode(id)
+	return key
 }
 
 func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error) {
@@ -51,18 +52,18 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 		Hits:    0,
 	}
 
-	shortUrl := s.generateShortUrl(ctx)
-	object.ShortCode = shortUrl
+	shortCode := s.generateShortUrl(ctx)
+	object.ShortCode = shortCode
 
 	if expiry != nil {
 		object.Expiry = *expiry
 	}
 
-	_, err := s.repository.Set(ctx, shortenUrlPrefix, shortUrl, object)
+	_, err := s.repository.Set(ctx, shortenUrlPrefix, shortCode, object)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
-	return shortUrl, nil
+	return shortCode, nil
 }
 
 func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
