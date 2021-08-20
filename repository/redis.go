@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"reflect"
 	"time"
-	"url-shortener/model"
 )
 
 // Repository is an interface for key-value database
 type Repository interface {
 	Set(ctx context.Context, key string, o interface{}, expiry *time.Time) (bool, error)
-	Get(context.Context, string) (*model.UrlObject, error)
+	Get(ctx context.Context, key string, v interface{}) error
+	MGet(ctx context.Context, keys []interface{}, v interface{}) error
 	Del(context.Context, string) (bool, error)
 	Exists(context.Context, string) (bool, error)
 	// SAdd(context.Context, string, string) (bool, error)
@@ -61,7 +62,7 @@ func (r *redisRepository) Set(ctx context.Context, key string, o interface{}, ex
 
 	// set expiry only specified
 	var defaultTime time.Time
-	if expiry != nil || expiry.Unix() != defaultTime.Unix() {
+	if expiry != nil && expiry.Unix() != defaultTime.Unix() {
 		_, err = conn.Do("EXPIREAT", key, expiry.Unix())
 		if err != nil {
 			return false, fmt.Errorf("failed to set expire at: %v", err)
@@ -70,24 +71,48 @@ func (r *redisRepository) Set(ctx context.Context, key string, o interface{}, ex
 
 	return true, nil
 }
-func (r *redisRepository) Get(ctx context.Context, key string) (*model.UrlObject, error) {
+func (r *redisRepository) Get(ctx context.Context, key string, v interface{}) error {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("context expired. err: %v", err)
+		return fmt.Errorf("context expired. err: %v", err)
 	}
 	defer conn.Close()
 
-	jsonBytes, err := redis.Bytes(conn.Do("GET", key))
+	reply, err := redis.Bytes(conn.Do("GET", key))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get data: %v", err)
+		return fmt.Errorf("failed to get data from do: %v", err)
 	}
 
-	var o model.UrlObject
-	if err = json.Unmarshal(jsonBytes, &o); err != nil {
-		return nil, err
+	err = json.Unmarshal(reply, v)
+	if err != nil {
+		return fmt.Errorf("failed to get data: %v", err)
 	}
 
-	return &o, nil
+	return nil
+}
+func (r *redisRepository) MGet(ctx context.Context, keys []interface{}, v interface{}) error {
+	conn, err := r.Pool.GetContext(ctx)
+	if err != nil {
+		return fmt.Errorf("context expired. err: %v", err)
+	}
+	defer conn.Close()
+
+	reply, err := redis.ByteSlices(conn.Do("MGET", keys...))
+	if err != nil {
+		return fmt.Errorf("failed to get data by MGET, err: %v", err)
+	}
+
+	// unmarshal to a slice of any literals
+	p := reflect.ValueOf(v)
+	s := reflect.Indirect(p)
+	for i := 0; i < s.Len(); i++ {
+		addr := s.Index(i).Addr().Interface()
+		if err = json.Unmarshal(reply[i], addr); err != nil {
+			return fmt.Errorf("failed to get data by MGET, err: %v", err)
+		}
+	}
+
+	return nil
 }
 func (r *redisRepository) Del(ctx context.Context, key string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
