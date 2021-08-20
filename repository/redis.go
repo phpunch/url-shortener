@@ -175,9 +175,8 @@ func (r *redisRepository) SIsMember(ctx context.Context, key string, member stri
 	if err != nil {
 		return false, fmt.Errorf("failed to search members in set: %v", err)
 	}
-	fmt.Printf("members: %v\n", members)
 	if members != 1 {
-		return false, fmt.Errorf("%s is not in %s", member, key)
+		return false, nil
 	}
 
 	return true, nil
