@@ -67,16 +67,10 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 	}
 
 	shortCodeKey := fmt.Sprintf(keyPattern, shortCode, fullUrl)
-	// fullUrlKey := fullUrlPrefix + fullUrl
-
 	_, err := s.repository.Set(ctx, shortCodeKey, object, expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
-	// _, err = s.repository.Set(ctx, fullUrlKey, shortCodeKey, expiry)
-	// if err != nil {
-	// 	return "", fmt.Errorf("failed to set object, err: %v", err)
-	// }
 
 	return shortCode, nil
 }
@@ -140,36 +134,6 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get members, err: %v", err)
 	}
-
-	// filter full url
-	// if fullUrl != nil {
-	// 	fullUrlKeys, err = s.repository.Keys(ctx, fullUrlPrefix+"*"+*fullUrl+"*")
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to get members, err: %v", err)
-	// 	}
-	// 	if len(fullUrlKeys) != 0 {
-	// 		var keys []interface{}
-	// 		for _, key := range fullUrlKeys {
-	// 			keys = append(keys, key)
-	// 		}
-	// 		var filteredShortCodeKeysByFullUrl []string
-	// 		for _ = range fullUrlKeys {
-	// 			filteredShortCodeKeysByFullUrl = append(filteredShortCodeKeysByFullUrl, "")
-	// 		}
-
-	// 		// get all shortCodes from all fullUrlKeys
-	// 		err := s.repository.MGet(ctx, keys, &filteredShortCodeKeysByFullUrl)
-	// 		if err != nil {
-	// 			return nil, fmt.Errorf("failed to get short codes from full url keys, err: %v", err)
-	// 		}
-
-	// 		fmt.Printf("after filteredShortCodeKeysByFullUrl: %v\n", filteredShortCodeKeysByFullUrl)
-
-	// 		// intersect with shortCodeKeys
-	// 		shortCodeKeys = intersect(shortCodeKeys, filteredShortCodeKeysByFullUrl)
-	// 	}
-
-	// }
 
 	var urlObjects []*model.UrlObject
 	for _, shortCodeKey := range shortCodeKeys {
