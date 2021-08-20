@@ -12,9 +12,8 @@ import (
 	"url-shortener/repository"
 )
 
-const shortenUrlPrefix = "shortenUrl:"
-const fullUrlPrefix = "fullUrl:"
 const deletedShortUrlKey = "deletedShortUrlKey"
+const keyPattern = "url:%s#%s"
 
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
@@ -67,17 +66,17 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 		object.Expiry = *expiry
 	}
 
-	shortCodeKey := shortenUrlPrefix + shortCode
-	fullUrlKey := fullUrlPrefix + fullUrl
+	shortCodeKey := fmt.Sprintf(keyPattern, shortCode, fullUrl)
+	// fullUrlKey := fullUrlPrefix + fullUrl
 
 	_, err := s.repository.Set(ctx, shortCodeKey, object, expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
-	_, err = s.repository.Set(ctx, fullUrlKey, shortCodeKey, expiry)
-	if err != nil {
-		return "", fmt.Errorf("failed to set object, err: %v", err)
-	}
+	// _, err = s.repository.Set(ctx, fullUrlKey, shortCodeKey, expiry)
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to set object, err: %v", err)
+	// }
 
 	return shortCode, nil
 }
@@ -95,17 +94,26 @@ func (s *service) Decode(ctx context.Context, shortCode string) (string, error) 
 		}
 	}
 
-	shortCodeKey := getShortCodeKey(shortCode)
+	shortCodeKey := fmt.Sprintf(keyPattern, shortCode, "*")
+
+	keys, err := s.repository.Keys(ctx, shortCodeKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to get url, err: %v", err)
+	}
+
+	if len(keys) != 1 {
+		return "", fmt.Errorf("failed to get url, err: not single key")
+	}
 
 	var object model.UrlObject
-	err = s.repository.Get(ctx, shortenUrlPrefix+shortCode, &object)
+	err = s.repository.Get(ctx, keys[0], &object)
 	if err != nil {
 		return "", fmt.Errorf("failed to get url, err: %v", err)
 	}
 
 	object.Hits += 1
 
-	_, err = s.repository.Set(ctx, shortCodeKey, object, &object.Expiry)
+	_, err = s.repository.Set(ctx, keys[0], object, &object.Expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -114,13 +122,17 @@ func (s *service) Decode(ctx context.Context, shortCode string) (string, error) 
 
 func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl *string) ([]*model.UrlObject, error) {
 	var shortCodeKeys []string
-	var fullUrlKeys []string
+	// var fullUrlKeys []string
 	var err error
 
 	// filter short code
-	shortCodePattern := shortenUrlPrefix + "*"
-	if shortCode != nil {
-		shortCodePattern = shortenUrlPrefix + "*" + *shortCode + "*"
+	shortCodePattern := fmt.Sprintf(keyPattern, "*", "*")
+	if shortCode != nil && fullUrl != nil {
+		shortCodePattern = fmt.Sprintf(keyPattern, "*"+*shortCode+"*", "*"+*fullUrl+"*")
+	} else if shortCode != nil {
+		shortCodePattern = fmt.Sprintf(keyPattern, "*"+*shortCode+"*", "*")
+	} else if fullUrl != nil {
+		shortCodePattern = fmt.Sprintf(keyPattern, "*", "*"+*fullUrl+"*")
 	}
 
 	// search all possible shortCodeKeys
@@ -130,34 +142,34 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 	}
 
 	// filter full url
-	if fullUrl != nil {
-		fullUrlKeys, err = s.repository.Keys(ctx, fullUrlPrefix+"*"+*fullUrl+"*")
-		if err != nil {
-			return nil, fmt.Errorf("failed to get members, err: %v", err)
-		}
-		if len(fullUrlKeys) != 0 {
-			var keys []interface{}
-			for _, key := range fullUrlKeys {
-				keys = append(keys, key)
-			}
-			var filteredShortCodeKeysByFullUrl []string
-			for _ = range fullUrlKeys {
-				filteredShortCodeKeysByFullUrl = append(filteredShortCodeKeysByFullUrl, "")
-			}
+	// if fullUrl != nil {
+	// 	fullUrlKeys, err = s.repository.Keys(ctx, fullUrlPrefix+"*"+*fullUrl+"*")
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to get members, err: %v", err)
+	// 	}
+	// 	if len(fullUrlKeys) != 0 {
+	// 		var keys []interface{}
+	// 		for _, key := range fullUrlKeys {
+	// 			keys = append(keys, key)
+	// 		}
+	// 		var filteredShortCodeKeysByFullUrl []string
+	// 		for _ = range fullUrlKeys {
+	// 			filteredShortCodeKeysByFullUrl = append(filteredShortCodeKeysByFullUrl, "")
+	// 		}
 
-			// get all shortCodes from all fullUrlKeys
-			err := s.repository.MGet(ctx, keys, &filteredShortCodeKeysByFullUrl)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get short codes from full url keys, err: %v", err)
-			}
+	// 		// get all shortCodes from all fullUrlKeys
+	// 		err := s.repository.MGet(ctx, keys, &filteredShortCodeKeysByFullUrl)
+	// 		if err != nil {
+	// 			return nil, fmt.Errorf("failed to get short codes from full url keys, err: %v", err)
+	// 		}
 
-			fmt.Printf("after filteredShortCodeKeysByFullUrl: %v\n", filteredShortCodeKeysByFullUrl)
+	// 		fmt.Printf("after filteredShortCodeKeysByFullUrl: %v\n", filteredShortCodeKeysByFullUrl)
 
-			// intersect with shortCodeKeys
-			shortCodeKeys = intersect(shortCodeKeys, filteredShortCodeKeysByFullUrl)
-		}
+	// 		// intersect with shortCodeKeys
+	// 		shortCodeKeys = intersect(shortCodeKeys, filteredShortCodeKeysByFullUrl)
+	// 	}
 
-	}
+	// }
 
 	var urlObjects []*model.UrlObject
 	for _, shortCodeKey := range shortCodeKeys {
@@ -173,7 +185,17 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 }
 
 func (s *service) DeleteUrl(ctx context.Context, shortCode string) (bool, error) {
-	isDeleted, err := s.repository.Del(ctx, shortenUrlPrefix+shortCode)
+	shortCodeKey := fmt.Sprintf(keyPattern, shortCode, "*")
+
+	keys, err := s.repository.Keys(ctx, shortCodeKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to get key, err: %v", err)
+	}
+	if len(keys) != 1 {
+		return false, fmt.Errorf("failed to get key, err: not single key, keys: %v", keys)
+	}
+
+	isDeleted, err := s.repository.Del(ctx, keys[0])
 	if err != nil || !isDeleted {
 		return false, fmt.Errorf("failed to delete url, err: %v", err)
 	}
@@ -182,25 +204,4 @@ func (s *service) DeleteUrl(ctx context.Context, shortCode string) (bool, error)
 		return false, fmt.Errorf("failed to set object, err: %v", err)
 	}
 	return isDeleted, err
-}
-
-func getShortCodeKey(shortCode string) string {
-	return shortenUrlPrefix + shortCode
-}
-func getFullUrlKey(fullUrl string) string {
-	return fullUrlPrefix + fullUrl
-}
-func intersect(a []string, b []string) []string {
-	var result []string
-	set := make(map[string]bool)
-
-	for _, v := range a {
-		set[v] = true
-	}
-	for _, v := range b {
-		if set[v] {
-			result = append(result, v)
-		}
-	}
-	return result
 }
