@@ -11,6 +11,7 @@ import (
 )
 
 const shortenUrlPrefix = "shortenUrl:"
+const fullUrlPrefix = "fullUrl:"
 
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
@@ -59,7 +60,14 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 		object.Expiry = *expiry
 	}
 
-	_, err := s.repository.Set(ctx, shortenUrlPrefix+shortCode, object)
+	shortCodeKey := shortenUrlPrefix + shortCode
+	fullUrlKey := fullUrlPrefix + fullUrl
+
+	_, err := s.repository.Set(ctx, shortCodeKey, object, expiry)
+	if err != nil {
+		return "", fmt.Errorf("failed to set object, err: %v", err)
+	}
+	_, err = s.repository.Set(ctx, fullUrlKey, shortCodeKey, expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -67,6 +75,8 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 }
 
 func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
+	shortCodeKey := getShortCodeKey(shortCode)
+
 	object, err := s.repository.Get(ctx, shortenUrlPrefix+shortCode)
 	if err != nil {
 		return "", fmt.Errorf("failed to get url, err: %v", err)
@@ -74,7 +84,7 @@ func (s *service) Decode(ctx context.Context, shortCode string) (string, error) 
 
 	object.Hits += 1
 
-	_, err = s.repository.Set(ctx, shortenUrlPrefix+shortCode, object)
+	_, err = s.repository.Set(ctx, shortCodeKey, object, &object.Expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -107,4 +117,11 @@ func (s *service) DeleteUrl(ctx context.Context, url string) (bool, error) {
 		return false, fmt.Errorf("failed to delete url, err: %v", err)
 	}
 	return isDeleted, err
+}
+
+func getShortCodeKey(shortCode string) string {
+	return shortenUrlPrefix + shortCode
+}
+func getFullUrlKey(fullUrl string) string {
+	return fullUrlPrefix + fullUrl
 }
