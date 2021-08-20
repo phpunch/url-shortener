@@ -11,7 +11,7 @@ import (
 
 // Repository is an interface for key-value database
 type Repository interface {
-	Set(context.Context, string, *model.UrlObject) (string, error)
+	Set(ctx context.Context, key string, o interface{}, expiry *time.Time) (bool, error)
 	Get(context.Context, string) (*model.UrlObject, error)
 	Del(context.Context, string) (bool, error)
 	Exists(context.Context, string) (bool, error)
@@ -41,34 +41,34 @@ func NewPool(address string) (Repository, error) {
 	return &redisRepository{Pool: pool}, nil
 }
 
-func (r *redisRepository) Set(ctx context.Context, key string, o *model.UrlObject) (string, error) {
+func (r *redisRepository) Set(ctx context.Context, key string, o interface{}, expiry *time.Time) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
-		return "", fmt.Errorf("context expired. err: %v", err)
+		return false, fmt.Errorf("context expired. err: %v", err)
 	}
 	defer conn.Close()
 
 	jsonBytes, err := json.Marshal(o)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal json, err: %v", err)
+		return false, fmt.Errorf("failed to marshal json, err: %v", err)
 	}
 
 	// set url object
 	_, err = conn.Do("SET", key, jsonBytes)
 	if err != nil {
-		return "", fmt.Errorf("failed to set data: %v", err)
+		return false, fmt.Errorf("failed to set data: %v", err)
 	}
 
 	// set expiry only specified
 	var defaultTime time.Time
-	if o.Expiry.Unix() != defaultTime.Unix() {
-		_, err = conn.Do("EXPIREAT", key, o.Expiry.Unix())
+	if expiry != nil || expiry.Unix() != defaultTime.Unix() {
+		_, err = conn.Do("EXPIREAT", key, expiry.Unix())
 		if err != nil {
-			return "", fmt.Errorf("failed to set expire at: %v", err)
+			return false, fmt.Errorf("failed to set expire at: %v", err)
 		}
 	}
 
-	return "", nil
+	return true, nil
 }
 func (r *redisRepository) Get(ctx context.Context, key string) (*model.UrlObject, error) {
 	conn, err := r.Pool.GetContext(ctx)
