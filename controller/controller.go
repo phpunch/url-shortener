@@ -12,8 +12,10 @@ import (
 	"url-shortener/validate"
 )
 
+// Set fixed admin token
 const adminToken = "@dmIn"
 
+// Controller is an interface for APIs
 type Controller interface {
 	Shorten(ctx *gin.Context)
 	Redirect(ctx *gin.Context)
@@ -21,20 +23,13 @@ type Controller interface {
 	DeleteUrl(ctx *gin.Context)
 }
 
+// controller is an APIs management
+
 type controller struct {
 	service service.Service
 }
 
-type Header struct {
-	Token string `header:"Token"`
-}
-
-type Response struct {
-	Code    uint64      `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
-}
-
+// New is a constructor of controller
 func New(service service.Service) Controller {
 	return &controller{
 		service,
@@ -105,7 +100,7 @@ func (c *controller) Shorten(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, &Response{
+	ctx.JSON(http.StatusOK, &model.Response{
 		Code:    0,
 		Message: "success",
 		Data:    shortCode,
@@ -154,7 +149,7 @@ func (c *controller) Redirect(ctx *gin.Context) {
 // @router /admin/urls [get]
 func (c *controller) GetUrls(ctx *gin.Context) {
 	// Receive input
-	h := Header{}
+	h := model.Header{}
 	if err := ctx.ShouldBindHeader(&h); err != nil {
 		ctx.JSON(http.StatusForbidden, customError.InternalError{
 			Code:    2,
@@ -190,7 +185,7 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, &Response{
+	ctx.JSON(http.StatusOK, &model.Response{
 		Code:    0,
 		Message: "success",
 		Data:    urlObjects,
@@ -209,7 +204,7 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 // @router /{shortCode} [delete]
 func (c *controller) DeleteUrl(ctx *gin.Context) {
 	// Receive input
-	h := Header{}
+	h := model.Header{}
 	if err := ctx.ShouldBindHeader(&h); err != nil {
 		ctx.JSON(http.StatusForbidden, customError.InternalError{
 			Code:    2,
@@ -235,7 +230,7 @@ func (c *controller) DeleteUrl(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, &Response{
+	ctx.JSON(http.StatusOK, &model.Response{
 		Code:    0,
 		Message: "success",
 	})
