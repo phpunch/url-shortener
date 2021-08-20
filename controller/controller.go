@@ -41,7 +41,7 @@ func New(service service.Service) Controller {
 // @Accept  json
 // @Produce  json
 // @Param ShortenInput body model.ShortenInput true "Input for shortening data"
-// @Success 200 {object} Response
+// @Success 200 {object} model.Response
 // @Failure 400,404 {object} customError.ValidationError
 // @Router /shorten [post]
 func (c *controller) Shorten(ctx *gin.Context) {
@@ -112,7 +112,7 @@ func (c *controller) Shorten(ctx *gin.Context) {
 // @description Redirect to full url using short code
 // @produce json
 // @Param shortCode path string true "Short Code"
-// @Success 302 {object} Response
+// @Success 302 {object} model.Response
 // @Failure 404 {object} customError.InternalError
 // @router /{shortCode} [get]
 func (c *controller) Redirect(ctx *gin.Context) {
@@ -144,7 +144,7 @@ func (c *controller) Redirect(ctx *gin.Context) {
 // @Param token header string true "Admin token -> enter `@dmIn`"
 // @Param shortCode query string false "Short Code"
 // @Param fullUrl query string false "Full URL"
-// @Success 200 {object} Response
+// @Success 200 {object} model.Response
 // @Failure 400 {object} customError.InternalError
 // @router /admin/urls [get]
 func (c *controller) GetUrls(ctx *gin.Context) {
@@ -203,7 +203,7 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 // @produce json
 // @Param token header string true "Admin token -> enter `@dmIn`"
 // @Param shortCode path string true "Short Code"
-// @Success 200 {object} Response
+// @Success 200 {object} model.Response
 // @Failure 403 {object} customError.InternalError
 // @Failure 404 {object} customError.InternalError
 // @router /{shortCode} [delete]

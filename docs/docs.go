@@ -55,7 +55,7 @@ var doc = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "400": {
@@ -92,7 +92,7 @@ var doc = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "400": {
@@ -130,7 +130,7 @@ var doc = `{
                     "302": {
                         "description": "Found",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "404": {
@@ -167,7 +167,7 @@ var doc = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "403": {
@@ -187,20 +187,6 @@ var doc = `{
         }
     },
     "definitions": {
-        "controller.Response": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "type": "object"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
         "customError.InternalError": {
             "type": "object",
             "properties": {
@@ -217,6 +203,20 @@ var doc = `{
             "properties": {
                 "code": {
                     "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "object"
                 },
                 "message": {
                     "type": "string"

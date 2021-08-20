@@ -39,7 +39,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "400": {
@@ -76,7 +76,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "400": {
@@ -114,7 +114,7 @@
                     "302": {
                         "description": "Found",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "404": {
@@ -151,7 +151,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.Response"
+                            "$ref": "#/definitions/model.Response"
                         }
                     },
                     "403": {
@@ -171,20 +171,6 @@
         }
     },
     "definitions": {
-        "controller.Response": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "type": "object"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
         "customError.InternalError": {
             "type": "object",
             "properties": {
@@ -201,6 +187,20 @@
             "properties": {
                 "code": {
                     "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "object"
                 },
                 "message": {
                     "type": "string"
