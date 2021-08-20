@@ -14,8 +14,16 @@ Application Functionalities
 
 How to run a service
 
-serve a service via Docker, port will be available at 8080
+- serve a service via Docker, port will be available at 8080
 
 ```sh
 docker-compose up --build
+```
+
+- see all APIs by visiting <http://localhost:8080/swagger/index.html>
+
+- tests all functions in controller pkg by
+
+```sh
+go test ./controller/
 ```
