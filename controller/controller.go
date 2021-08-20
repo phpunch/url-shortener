@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 	"url-shortener/customError"
+	"url-shortener/model"
 	"url-shortener/service"
 	"url-shortener/validate"
 )
@@ -40,12 +41,18 @@ func New(service service.Service) Controller {
 	}
 }
 
+// Shorten godoc
+// @Summary Shorten a specified url
+// @Description shorten a specified url
+// @Accept  json
+// @Produce  json
+// @Param ShortenInput body model.ShortenInput true "Input for shortening data"
+// @Success 200 {object} Response
+// @Failure 400,404 {object} customError.ValidationError
+// @Router /shorten [post]
 func (c *controller) Shorten(ctx *gin.Context) {
 	// Receive input
-	var input struct {
-		Url    string `json:"url"`
-		Expiry string `json:"expiry"`
-	}
+	var input model.ShortenInput
 
 	// Bind response body to input
 	if err := ctx.ShouldBindJSON(&input); err != nil {
@@ -94,7 +101,7 @@ func (c *controller) Shorten(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusOK, customError.InternalError{
 			Code:    2,
-			Message: fmt.Sprintf("internal error, err: %v", err),
+			Message: err.Error(),
 		})
 		return
 	}
@@ -105,6 +112,14 @@ func (c *controller) Shorten(ctx *gin.Context) {
 	})
 }
 
+// Redirect godoc
+// @summary Redirect to full url
+// @description Redirect to full url using short code
+// @produce json
+// @Param shortCode path string true "Short Code"
+// @Success 302 {object} Response
+// @Failure 404 {object} customError.InternalError
+// @router /{shortCode} [get]
 func (c *controller) Redirect(ctx *gin.Context) {
 	// Receive input
 	shortCode := ctx.Param("shortCode")
@@ -127,6 +142,16 @@ func (c *controller) Redirect(ctx *gin.Context) {
 	ctx.Redirect(http.StatusFound, fullUrl)
 }
 
+// GetUrls godoc
+// @summary Get all url for admin
+// @description Get all url saved in database and can be filtered with a short code and a full url
+// @produce json
+// @Param token header string true "Admin token -> enter `@dmIn`"
+// @Param shortCode query string false "Short Code"
+// @Param fullUrl query string false "Full URL"
+// @Success 200 {object} Response
+// @Failure 400 {object} customError.InternalError
+// @router /admin/urls [get]
 func (c *controller) GetUrls(ctx *gin.Context) {
 	// Receive input
 	h := Header{}
@@ -172,6 +197,16 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 	})
 }
 
+// GetUrls godoc
+// @summary Get all url for admin
+// @description Get all url saved in database and can be filtered with a short code and a full url
+// @produce json
+// @Param token header string true "Admin token -> enter `@dmIn`"
+// @Param shortCode path string true "Short Code"
+// @Success 200 {object} Response
+// @Failure 403 {object} customError.InternalError
+// @Failure 404 {object} customError.InternalError
+// @router /{shortCode} [delete]
 func (c *controller) DeleteUrl(ctx *gin.Context) {
 	// Receive input
 	h := Header{}
@@ -196,7 +231,7 @@ func (c *controller) DeleteUrl(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, customError.InternalError{
 			Code:    2,
-			Message: fmt.Sprintf("internal error, err: %v", err),
+			Message: err.Error(),
 		})
 		return
 	}

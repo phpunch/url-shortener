@@ -1,0 +1,151 @@
+definitions:
+  controller.Response:
+    properties:
+      code:
+        type: integer
+      data:
+        type: object
+      message:
+        type: string
+    type: object
+  customError.InternalError:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+  customError.ValidationError:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+  model.ShortenInput:
+    properties:
+      expiry:
+        example: "2021-08-21T18:21:05+07:00"
+        type: string
+      url:
+        example: http://www.facebook.com
+        type: string
+    required:
+    - url
+    type: object
+info:
+  contact: {}
+  description: Basic url shortener.
+  title: Swagger Example API
+  version: "1.0"
+paths:
+  /{shortCode}:
+    delete:
+      description: Get all url saved in database and can be filtered with a short
+        code and a full url
+      parameters:
+      - description: Admin token -> enter `@dmIn`
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Short Code
+        in: path
+        name: shortCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/customError.InternalError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/customError.InternalError'
+      summary: Get all url for admin
+    get:
+      description: Redirect to full url using short code
+      parameters:
+      - description: Short Code
+        in: path
+        name: shortCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            $ref: '#/definitions/controller.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/customError.InternalError'
+      summary: Redirect to full url
+  /admin/urls:
+    get:
+      description: Get all url saved in database and can be filtered with a short
+        code and a full url
+      parameters:
+      - description: Admin token -> enter `@dmIn`
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Short Code
+        in: query
+        name: shortCode
+        type: string
+      - description: Full URL
+        in: query
+        name: fullUrl
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/customError.InternalError'
+      summary: Get all url for admin
+  /shorten:
+    post:
+      consumes:
+      - application/json
+      description: shorten a specified url
+      parameters:
+      - description: Input for shortening data
+        in: body
+        name: ShortenInput
+        required: true
+        schema:
+          $ref: '#/definitions/model.ShortenInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/customError.ValidationError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/customError.ValidationError'
+      summary: Shorten a specified url
+swagger: "2.0"
