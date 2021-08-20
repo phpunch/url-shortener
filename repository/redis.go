@@ -16,7 +16,7 @@ type Repository interface {
 	Del(context.Context, string) (bool, error)
 	Exists(context.Context, string) (bool, error)
 	// SAdd(context.Context, string, string) (bool, error)
-	// SMembers(context.Context, string) ([]string, error)
+	// SIsMember(ctx context.Context, key string, member string) (bool, error)
 	Keys(context.Context, string) ([]string, error)
 }
 
@@ -126,6 +126,7 @@ func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) 
 // 	if err != nil {
 // 		return false, fmt.Errorf("context expired. err: %v", err)
 // 	}
+// 	defer conn.Close()
 
 // 	num, err := redis.Int(conn.Do("SADD", setGroup, member))
 // 	if num != 1 {
@@ -138,24 +139,29 @@ func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) 
 // 	return true, nil
 // }
 
-// func (r *redisRepository) SMembers(ctx context.Context, key string) ([]string, error) {
+// func (r *redisRepository) SIsMember(ctx context.Context, key string, member string) (bool, error) {
 // 	conn, err := r.Pool.GetContext(ctx)
 // 	if err != nil {
-// 		return nil, fmt.Errorf("context expired. err: %v", err)
+// 		return false, fmt.Errorf("context expired. err: %v", err)
 // 	}
+// 	defer conn.Close()
 
-// 	members, err := redis.Strings(conn.Do("SMEMBERS", key))
+// 	members, err := redis.Int(conn.Do("SMEMBERS", key))
 // 	if err != nil {
-// 		return nil, fmt.Errorf("failed to get members: %v", err)
+// 		return false, fmt.Errorf("failed to search members in set: %v", err)
+// 	}
+// 	if members != 1 {
+// 		return false, fmt.Errorf("%s is not in %s", member, key)
 // 	}
 
-// 	return members, nil
+// 	return true, nil
 // }
 func (r *redisRepository) Keys(ctx context.Context, pattern string) ([]string, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("context expired. err: %v", err)
 	}
+	defer conn.Close()
 
 	keys, err := redis.Strings(conn.Do("KEYS", pattern))
 	if err != nil {
