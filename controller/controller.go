@@ -110,6 +110,13 @@ func (c *controller) Redirect(ctx *gin.Context) {
 
 	fullUrl, err := c.service.Decode(ctx, shortCode)
 	if err != nil {
+		if ierr, ok := err.(*customError.InternalError); ok {
+			ctx.JSON(ierr.HTTPStatusCode, customError.InternalError{
+				Code:    2,
+				Message: err.Error(),
+			})
+			return
+		}
 		ctx.JSON(http.StatusNotFound, customError.InternalError{
 			Code:    2,
 			Message: fmt.Sprintf("internal error, err: %v", err),

@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"github.com/catinello/base62"
 	"math/rand"
+	"net/http"
 	"time"
+	"url-shortener/customError"
 	"url-shortener/model"
 	"url-shortener/repository"
 )
 
 const shortenUrlPrefix = "shortenUrl:"
 const fullUrlPrefix = "fullUrl:"
+const deletedShortUrlKey = "deletedShortUrlKey"
 
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
@@ -43,6 +46,10 @@ func (s *service) generateShortUrl(ctx context.Context) string {
 		if err != nil || exist {
 			continue
 		}
+		exist, err = s.repository.SIsMember(ctx, deletedShortUrlKey, key)
+		if err != nil || exist {
+			continue
+		}
 	}
 	return key
 }
@@ -71,14 +78,27 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
+
 	return shortCode, nil
 }
 
 func (s *service) Decode(ctx context.Context, shortCode string) (string, error) {
+	deleted, err := s.repository.SIsMember(ctx, deletedShortUrlKey, shortCode)
+	if err != nil {
+		return "", err
+	}
+	if deleted {
+		return "", &customError.InternalError{
+			Code:           0,
+			Message:        "this short code is already deleted",
+			HTTPStatusCode: http.StatusGone,
+		}
+	}
+
 	shortCodeKey := getShortCodeKey(shortCode)
 
 	var object model.UrlObject
-	err := s.repository.Get(ctx, shortenUrlPrefix+shortCode, &object)
+	err = s.repository.Get(ctx, shortenUrlPrefix+shortCode, &object)
 	if err != nil {
 		return "", fmt.Errorf("failed to get url, err: %v", err)
 	}
@@ -152,10 +172,14 @@ func (s *service) GetUrlObjects(ctx context.Context, shortCode *string, fullUrl 
 	return urlObjects, nil
 }
 
-func (s *service) DeleteUrl(ctx context.Context, url string) (bool, error) {
-	isDeleted, err := s.repository.Del(ctx, shortenUrlPrefix+url)
+func (s *service) DeleteUrl(ctx context.Context, shortCode string) (bool, error) {
+	isDeleted, err := s.repository.Del(ctx, shortenUrlPrefix+shortCode)
 	if err != nil || !isDeleted {
 		return false, fmt.Errorf("failed to delete url, err: %v", err)
+	}
+	_, err = s.repository.SAdd(ctx, deletedShortUrlKey, shortCode)
+	if err != nil {
+		return false, fmt.Errorf("failed to set object, err: %v", err)
 	}
 	return isDeleted, err
 }
