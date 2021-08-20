@@ -24,7 +24,6 @@ type Controller interface {
 }
 
 // controller is an APIs management
-
 type controller struct {
 	service service.Service
 }
