@@ -18,9 +18,6 @@ const deletedShortUrlKey = "deletedShortUrlKey" // key for saving all deleted sh
 // and it has a pattern `url:{shortCode}:{fullUrl}`.
 const keyPattern = "url:%s#%s"
 
-// max time
-var maxTime, _ = time.Parse(time.RFC3339, "9999-12-31T23:59:59+07:00")
-
 // Controller is an interface for service functions
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
@@ -53,14 +50,11 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 	object.ShortCode = shortCode
 
 	if expiry != nil {
-		object.Expiry = *expiry
-	} else {
-		// set maxTime to expiry if a user don't specify this field
-		object.Expiry = maxTime
+		object.Expiry = expiry
 	}
 
 	shortCodeKey := fmt.Sprintf(keyPattern, shortCode, fullUrl)
-	_, err := s.repository.Set(ctx, shortCodeKey, object, &object.Expiry)
+	_, err := s.repository.Set(ctx, shortCodeKey, object, object.Expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -104,7 +98,7 @@ func (s *service) Decode(ctx context.Context, shortCode string) (string, error) 
 
 	object.Hits += 1
 
-	_, err = s.repository.Set(ctx, keys[0], object, &object.Expiry)
+	_, err = s.repository.Set(ctx, keys[0], object, object.Expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
