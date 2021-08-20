@@ -15,6 +15,8 @@ import (
 const deletedShortUrlKey = "deletedShortUrlKey"
 const keyPattern = "url:%s#%s"
 
+var maxTime, _ = time.Parse(time.RFC3339, "9999-12-31T23:59:59+07:00")
+
 type Service interface {
 	Encode(ctx context.Context, fullUrl string, expiry *time.Time) (string, error)
 	Decode(ctx context.Context, shortCode string) (string, error)
@@ -64,10 +66,13 @@ func (s *service) Encode(ctx context.Context, fullUrl string, expiry *time.Time)
 
 	if expiry != nil {
 		object.Expiry = *expiry
+	} else {
+		// set maxTime to expiry if a user don't specify this field
+		object.Expiry = maxTime
 	}
 
 	shortCodeKey := fmt.Sprintf(keyPattern, shortCode, fullUrl)
-	_, err := s.repository.Set(ctx, shortCodeKey, object, expiry)
+	_, err := s.repository.Set(ctx, shortCodeKey, object, &object.Expiry)
 	if err != nil {
 		return "", fmt.Errorf("failed to set object, err: %v", err)
 	}
@@ -96,7 +101,7 @@ func (s *service) Decode(ctx context.Context, shortCode string) (string, error) 
 	}
 
 	if len(keys) != 1 {
-		return "", fmt.Errorf("failed to get url, err: not single key")
+		return "", fmt.Errorf("failed to get url, err: not single key, keys: %v", keys)
 	}
 
 	var object model.UrlObject

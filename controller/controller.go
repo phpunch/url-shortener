@@ -77,9 +77,9 @@ func (c *controller) Shorten(ctx *gin.Context) {
 	}
 
 	// Convert expiry to time type
-	var expiry *time.Time
+	var pointerToExpiry *time.Time
 	if input.Expiry != "" {
-		(*expiry), err = time.Parse(time.RFC3339, input.Expiry)
+		expiry, err := time.Parse(time.RFC3339, input.Expiry)
 		if err != nil {
 			ctx.JSON(http.StatusOK, customError.ValidationError{
 				Code:    1,
@@ -87,9 +87,10 @@ func (c *controller) Shorten(ctx *gin.Context) {
 			})
 			return
 		}
+		pointerToExpiry = &expiry
 	}
 
-	shortCode, err := c.service.Encode(ctx, uri.String(), expiry)
+	shortCode, err := c.service.Encode(ctx, uri.String(), pointerToExpiry)
 	if err != nil {
 		ctx.JSON(http.StatusOK, customError.InternalError{
 			Code:    2,
