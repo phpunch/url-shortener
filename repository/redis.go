@@ -42,14 +42,15 @@ func NewPool(address string) (Repository, error) {
 	return &redisRepository{Pool: pool}, nil
 }
 
-func (r *redisRepository) Set(ctx context.Context, key string, o interface{}, expiry *time.Time) (bool, error) {
+// Set sets an object to a specified key with expiry
+func (r *redisRepository) Set(ctx context.Context, key string, object interface{}, expiry *time.Time) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
 		return false, fmt.Errorf("context expired. err: %v", err)
 	}
 	defer conn.Close()
 
-	jsonBytes, err := json.Marshal(o)
+	jsonBytes, err := json.Marshal(object)
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal json, err: %v", err)
 	}
@@ -71,6 +72,8 @@ func (r *redisRepository) Set(ctx context.Context, key string, o interface{}, ex
 
 	return true, nil
 }
+
+// Get unmarshals a value got from Redis to value `v`
 func (r *redisRepository) Get(ctx context.Context, key string, v interface{}) error {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
@@ -90,6 +93,9 @@ func (r *redisRepository) Get(ctx context.Context, key string, v interface{}) er
 
 	return nil
 }
+
+// MGet unmarshals values got from Redis to each elements of value `v`.
+// The length of value `v` must be equal to the number elements of `keys`.
 func (r *redisRepository) MGet(ctx context.Context, keys []interface{}, v interface{}) error {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
@@ -114,6 +120,9 @@ func (r *redisRepository) MGet(ctx context.Context, keys []interface{}, v interf
 
 	return nil
 }
+
+// Del unmarshals values got from Redis to each elements of value `v`.
+// The length of value `v` must be equal to the number elements of `keys`.
 func (r *redisRepository) Del(ctx context.Context, key string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
@@ -131,6 +140,8 @@ func (r *redisRepository) Del(ctx context.Context, key string) (bool, error) {
 
 	return true, nil
 }
+
+// Exists returns whether `key` exists.
 func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
@@ -146,6 +157,7 @@ func (r *redisRepository) Exists(ctx context.Context, key string) (bool, error) 
 	return value, nil
 }
 
+// SAdd adds a specified member to the set stored at key
 func (r *redisRepository) SAdd(ctx context.Context, setGroup string, member string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
@@ -164,6 +176,7 @@ func (r *redisRepository) SAdd(ctx context.Context, setGroup string, member stri
 	return true, nil
 }
 
+// SIsMember returns whether it is a member of the set stored at key.
 func (r *redisRepository) SIsMember(ctx context.Context, key string, member string) (bool, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {
@@ -182,6 +195,7 @@ func (r *redisRepository) SIsMember(ctx context.Context, key string, member stri
 	return true, nil
 }
 
+// Keys returns all keys matching `pattern`.
 func (r *redisRepository) Keys(ctx context.Context, pattern string) ([]string, error) {
 	conn, err := r.Pool.GetContext(ctx)
 	if err != nil {

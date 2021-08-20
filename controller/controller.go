@@ -92,6 +92,7 @@ func (c *controller) Shorten(ctx *gin.Context) {
 		pointerToExpiry = &expiry
 	}
 
+	// call encode function
 	shortCode, err := c.service.Encode(ctx, uri.String(), pointerToExpiry)
 	if err != nil {
 		ctx.JSON(http.StatusOK, customError.InternalError{
@@ -157,6 +158,8 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 		})
 		return
 	}
+
+	// check admin token whether it is valid
 	if h.Token != adminToken {
 		ctx.JSON(http.StatusForbidden, customError.InternalError{
 			Code:    2,
@@ -165,9 +168,11 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 		return
 	}
 
+	// receive query params for short code and full url
 	shortCode := ctx.Query("shortCode")
 	fullUrl := ctx.Query("fullUrl")
 
+	// if any query param isn't specified, it will save to null value
 	var pointerToShortCode *string
 	var pointerToFullUrl *string
 	if shortCode != "" {
@@ -177,6 +182,7 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 		pointerToFullUrl = &fullUrl
 	}
 
+	// call get url objects
 	urlObjects, err := c.service.GetUrlObjects(ctx, pointerToShortCode, pointerToFullUrl)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, customError.InternalError{
@@ -212,6 +218,8 @@ func (c *controller) DeleteUrl(ctx *gin.Context) {
 		})
 		return
 	}
+
+	// check admin token whether it is valid
 	if h.Token != adminToken {
 		ctx.JSON(http.StatusForbidden, customError.InternalError{
 			Code:    2,
@@ -222,6 +230,7 @@ func (c *controller) DeleteUrl(ctx *gin.Context) {
 
 	shortCode := ctx.Param("shortCode")
 
+	// call delete url
 	_, err := c.service.DeleteUrl(ctx, shortCode)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, customError.InternalError{
