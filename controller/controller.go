@@ -123,7 +123,7 @@ func (c *controller) Redirect(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.Redirect(http.StatusMovedPermanently, fullUrl)
+	ctx.Redirect(http.StatusFound, fullUrl)
 }
 
 func (c *controller) GetUrls(ctx *gin.Context) {
