@@ -137,10 +137,19 @@ func (c *controller) GetUrls(ctx *gin.Context) {
 		return
 	}
 
-	shortCode := ctx.Param("shortCode")
-	fullUrl := ctx.Param("fullUrl")
+	shortCode := ctx.Query("shortCode")
+	fullUrl := ctx.Query("fullUrl")
 
-	urlObjects, err := c.service.GetUrlObjects(ctx, &shortCode, &fullUrl)
+	var pointerToShortCode *string
+	var pointerToFullUrl *string
+	if shortCode != "" {
+		pointerToShortCode = &shortCode
+	}
+	if fullUrl != "" {
+		pointerToFullUrl = &fullUrl
+	}
+
+	urlObjects, err := c.service.GetUrlObjects(ctx, pointerToShortCode, pointerToFullUrl)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, customError.InternalError{
 			Code:    2,
